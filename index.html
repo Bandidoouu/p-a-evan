@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simulación de volados</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 15px; }
+        h1 { text-align: center; }
+        form { background: #f2f2f2; padding: 15px; border-radius: 8px; }
+        label { display: block; margin-top: 10px; }
+        input { width: 100%; padding: 6px; box-sizing: border-box; }
+        button { margin-top: 15px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #999; padding: 6px; text-align: center; }
+        th { background: #333; color: white; }
+        .META { background: #c8f7c5; }
+        .QUIEBRA { background: #f7c5c5; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Simulación de volados</h1>
+    <p>Si pierdes, duplicas la apuesta. Si ganas, regresas a la apuesta inicial.
+       Cada corrida termina al llegar a la meta o al quedarte sin dinero.</p>
+
+    <!-- FORMULARIO: aquí el usuario escribe sus datos -->
+    <form method="POST">
+        <label>Capital inicial ($)</label>
+        <input type="number" name="capital" min="1" step="1" value="{{ datos.capital }}" required>
+
+        <label>Meta ($)</label>
+        <input type="number" name="meta" min="1" step="1" value="{{ datos.meta }}" required>
+
+        <label>Apuesta inicial ($)</label>
+        <input type="number" name="apuesta" min="1" step="1" value="{{ datos.apuesta }}" required>
+
+        <label>Gana si el número aleatorio es menor o igual a</label>
+        <input type="number" name="limite" min="0" max="1" step="0.0001" value="{{ datos.limite }}" required>
+
+        <label>Número de corridas</label>
+        <input type="number" name="corridas" min="1" max="1000" step="1" value="{{ datos.corridas }}" required>
+
+        <button type="submit">Simular</button>
+    </form>
+
+    <!-- Si hubo un error, lo mostramos -->
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <!-- RESULTADOS: solo aparecen después de presionar "Simular" -->
+    {% if filas %}
+        <h2>Resumen</h2>
+        <p>Metas: {{ metas }} &nbsp;|&nbsp; Quiebras: {{ quiebras }}</p>
+        <p>Probabilidad de llegar a la meta: <b>{{ prob_meta }}%</b></p>
+        <p>Probabilidad de quiebra: <b>{{ prob_quiebra }}%</b></p>
+
+        <h2>Tabla de volados</h2>
+        <table>
+            <tr>
+                <th>Corrida</th>
+                <th>Cantidad antes</th>
+                <th>Apuesta</th>
+                <th>Número aleatorio</th>
+                <th>¿Ganó?</th>
+                <th>Cantidad después</th>
+                <th>Resultado</th>
+            </tr>
+            {% for fila in filas %}
+            <tr class="{{ fila[6] }}">
+                {% for dato in fila %}
+                <td>{{ dato }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+</body>
+</html>
