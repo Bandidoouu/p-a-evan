@@ -3,7 +3,7 @@
 # ============================================================
 import random
 
-# ---------- Distribuciones por defecto (tomadas del PDF) ----------
+# ---------- Distribuciones por defecto ----------
 DIST_INICIAL = [(0, 0.50), (1, 0.25), (2, 0.15), (3, 0.10)]
 
 DIST_LLEGADAS = [(20, 0.02), (25, 0.08), (30, 0.12), (35, 0.25), (40, 0.20),
