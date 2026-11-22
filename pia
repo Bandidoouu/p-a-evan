@@ -1,7 +1,5 @@
 # ============================================================
 #  SIMULACIÓN DE COLAS — ALMACÉN
-#  Compatible con compiladores online (solo usa 'random')
-#  Basado en el ejemplo del PDF (equipos 3, 4, 5, 6 personas)
 # ============================================================
 import random
 
