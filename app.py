@@ -1,7 +1,6 @@
 # Simulación de colas: descarga de camiones en un almacén
 # para correrlo (desde esta carpeta):  python app.py
 # y abrir en el navegador:  http://127.0.0.1:8000
-# no hay que instalar nada, todo viene con Python
 
 import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -14,42 +13,26 @@ def a_minutos(texto):
     return int(partes[0]) * 60 + int(partes[1])
 
 
-# 1380 minutos -> "11:00 pm"
+# 1380 minutos -> "11:00" (formato de 12 horas, como en la libreta)
 def a_hora(minutos):
-    minutos = minutos % (24 * 60)  # si ya pasó de medianoche vuelve a empezar
-    h = minutos // 60
-    m = minutos % 60
-    if h < 12:
-        am_pm = "am"
-    else:
-        am_pm = "pm"
-    h = h % 12
+    h = (minutos // 60) % 12
     if h == 0:
         h = 12
-    return str(h) + ":" + str(m).zfill(2) + " " + am_pm
+    return str(h) + ":" + str(minutos % 60).zfill(2)
 
 
-# convierte el texto de una tabla en una lista, cada renglón es "valor probabilidad"
 # "20 0.02\n25 0.08"  ->  [[20, 0.02], [25, 0.08]]
 def leer_tabla(texto):
     tabla = []
     for renglon in texto.splitlines():
-        partes = renglon.replace(",", " ").split()
+        partes = renglon.split()
         if len(partes) == 2:
             tabla.append([int(partes[0]), float(partes[1])])
     return tabla
 
 
-# suma las probabilidades de una tabla (tiene que dar 1)
-def suma(tabla):
-    total = 0
-    for renglon in tabla:
-        total = total + renglon[1]
-    return round(total, 4)
-
-
-# convierte "0.19241 0.15997 ..." en una lista de números
-# si el usuario no escribió suficientes, se completan con números al azar
+# "0.19241, 0.15997"  ->  [0.19241, 0.15997, ...]
+# si no escribieron suficientes números, se completan al azar
 def leer_aleatorios(texto):
     numeros = []
     for x in texto.replace(",", " ").split():
@@ -92,7 +75,6 @@ def simular(personas, tabla_servicio, d):
     fin_anterior = d["apertura"]
     ya_comieron = False
     comida = "no les tocó comer"
-    fines = []  # aquí se guarda la hora en que terminó cada camión
 
     for i in range(len(filas)):
         fila = filas[i]
@@ -116,10 +98,10 @@ def simular(personas, tabla_servicio, d):
         servicio = escoger(r, tabla_servicio)
         fin = inicio + servicio
 
-        # longitud de la cola: camiones que siguen en el almacén cuando llega este
+        # longitud de la cola: camiones anteriores que siguen en el almacén cuando llega este
         cola = 0
-        for f in fines:
-            if f > llegada:
+        for anterior in filas[:i]:
+            if anterior["fin"] > llegada:
                 cola = cola + 1
 
         fila["inicio"] = inicio
@@ -129,21 +111,16 @@ def simular(personas, tabla_servicio, d):
         fila["ocio"] = ocio
         fila["espera"] = inicio - llegada
         fila["cola"] = cola
-
-        fines.append(fin)
         fin_anterior = fin
 
     # 4) costos
     espera_total = 0
-    ocio_total = 0
     for fila in filas:
         espera_total = espera_total + fila["espera"]
-        ocio_total = ocio_total + fila["ocio"]
 
-    ultimo_fin = fin_anterior
     horas_normales = (d["limite"] - d["apertura"]) / 60
-    horas_extra = max(0, ultimo_fin - d["limite"]) / 60
-    horas_almacen = (max(ultimo_fin, d["limite"]) - d["apertura"]) / 60
+    horas_extra = max(0, fin_anterior - d["limite"]) / 60
+    horas_almacen = (max(fin_anterior, d["limite"]) - d["apertura"]) / 60
 
     salario_normal = personas * horas_normales * d["salario"]
     salario_extra = personas * horas_extra * d["salario_extra"]
@@ -153,11 +130,8 @@ def simular(personas, tabla_servicio, d):
     return {
         "personas": personas,
         "filas": filas,
-        "iniciales": iniciales,
         "comida": comida,
         "espera_total": espera_total,
-        "ocio_total": ocio_total,
-        "ultimo_fin": ultimo_fin,
         "salario_normal": salario_normal,
         "salario_extra": salario_extra,
         "costo_espera": costo_espera,
@@ -168,64 +142,38 @@ def simular(personas, tabla_servicio, d):
 
 # recibe los datos del formulario y regresa la página con los resultados
 def procesar(form):
-    try:
-        d = {}
 
-        # las horas se pasan a minutos para poder sumarlas
-        d["apertura"] = a_minutos(form["apertura"])
-        d["limite"] = a_minutos(form["limite"])
-        d["comida"] = a_minutos(form["comida"])
-        # si una hora es menor que la de apertura, es del día siguiente (turno de noche)
-        if d["limite"] < d["apertura"]:
-            d["limite"] = d["limite"] + 24 * 60
-        if d["comida"] < d["apertura"]:
-            d["comida"] = d["comida"] + 24 * 60
-        d["duracion_comida"] = int(form["duracion_comida"])
+    # 1) leer los datos
+    d = {}
+    d["apertura"] = a_minutos(form["apertura"])
+    d["limite"] = a_minutos(form["limite"])
+    d["comida"] = a_minutos(form["comida"])
+    # turno de noche: si una hora es menor que la de apertura, es del día siguiente
+    if d["limite"] < d["apertura"]:
+        d["limite"] = d["limite"] + 24 * 60
+    if d["comida"] < d["apertura"]:
+        d["comida"] = d["comida"] + 24 * 60
+    d["duracion_comida"] = int(form["duracion_comida"])
 
-        d["salario"] = float(form["salario"])
-        d["salario_extra"] = float(form["salario_extra"])
-        d["costo_espera"] = float(form["costo_espera"])
-        d["costo_almacen"] = float(form["costo_almacen"])
+    d["salario"] = float(form["salario"])
+    d["salario_extra"] = float(form["salario_extra"])
+    d["costo_espera"] = float(form["costo_espera"])
+    d["costo_almacen"] = float(form["costo_almacen"])
 
-        d["tabla_inicial"] = leer_tabla(form["inicial"])
-        d["tabla_llegadas"] = leer_tabla(form["llegadas"])
+    d["tabla_inicial"] = leer_tabla(form["inicial"])
+    d["tabla_llegadas"] = leer_tabla(form["llegadas"])
 
-        # números aleatorios: los que escribió el usuario, o al azar si lo dejó vacío
-        # todos los equipos usan los mismos, así la comparación entre equipos es justa
-        if form["r_inicial"].strip() == "":
-            d["r_inicial"] = round(random.random(), 5)
-        else:
-            d["r_inicial"] = float(form["r_inicial"])
-        d["r_llegadas"] = leer_aleatorios(form["r_llegadas"])
-        d["r_servicio"] = leer_aleatorios(form["r_servicio"])
+    # todos los equipos usan los mismos números aleatorios, así la comparación es justa
+    d["r_inicial"] = leer_aleatorios(form["r_inicial"])[0]
+    d["r_llegadas"] = leer_aleatorios(form["r_llegadas"])
+    d["r_servicio"] = leer_aleatorios(form["r_servicio"])
 
-        # cada equipo es [personas, tabla de servicio]
-        equipos = []
-        for i in ["1", "2", "3", "4"]:
-            if form["personas" + i].strip() != "":
-                equipos.append([int(form["personas" + i]), leer_tabla(form["servicio" + i])])
-
-    except ValueError:
-        return pagina("<p>Revisa los datos, hay algo que no es un número.</p>")
-
-    # revisar que todas las tablas sumen 1
-    errores = ""
-    if suma(d["tabla_inicial"]) != 1:
-        errores += "<p>La tabla de camiones al abrir suma " + str(suma(d["tabla_inicial"])) + " y debe sumar 1.</p>"
-    if suma(d["tabla_llegadas"]) != 1:
-        errores += "<p>La tabla de llegadas suma " + str(suma(d["tabla_llegadas"])) + " y debe sumar 1.</p>"
-    for personas, tabla in equipos:
-        if suma(tabla) != 1:
-            errores += "<p>La tabla del equipo de " + str(personas) + " personas suma " + str(suma(tabla)) + " y debe sumar 1.</p>"
-    if len(equipos) == 0:
-        errores += "<p>Pon al menos un equipo.</p>"
-    if errores != "":
-        return pagina(errores)
-
-    # simular cada equipo
+    # 2) simular cada equipo
     resultados = []
-    for personas, tabla in equipos:
-        resultados.append(simular(personas, tabla, d))
+    for i in ["1", "2", "3", "4"]:
+        personas = int(form["personas" + i])
+        tabla_servicio = leer_tabla(form["servicio" + i])
+        resultados.append(simular(personas, tabla_servicio, d))
 
     # el equipo óptimo es el de menor costo total
     mejor = resultados[0]
@@ -233,8 +181,9 @@ def procesar(form):
         if res["total"] < mejor["total"]:
             mejor = res
 
-    # tabla para comparar los equipos
-    html = "<h2>Comparación de equipos</h2>"
+    # 3) armar la página de resultados
+    html = "<button onclick='history.back()'>Volver a los datos</button>"
+    html += "<h2>Comparación de equipos</h2>"
     html += "<table border='1' cellpadding='5'>"
     html += "<tr><th>Personas</th><th>Salario normal</th><th>Tiempo extra</th><th>Espera camiones</th><th>Almacén</th><th>Costo total</th></tr>"
     for res in resultados:
@@ -248,16 +197,11 @@ def procesar(form):
         html += "</tr>"
     html += "</table>"
     html += f"<h2>Equipo óptimo: {mejor['personas']} personas (${mejor['total']:.2f})</h2>"
+    html += f"<p>R para camiones al abrir: {d['r_inicial']}</p>"
 
-    # tabla de la simulación de cada equipo (igual que en la libreta)
     for res in resultados:
         html += f"<h2>Equipo de {res['personas']} personas</h2>"
-        html += f"<p>Camiones esperando al abrir: {res['iniciales']} (R = {d['r_inicial']})<br>"
-        html += f"Comida: {res['comida']}<br>"
-        html += f"Última descarga: {a_hora(res['ultimo_fin'])}<br>"
-        html += f"Espera total de camiones: {res['espera_total']} min<br>"
-        html += f"Ocio total del personal: {res['ocio_total']} min<br>"
-        html += f"Después de las {a_hora(d['limite'])} ya no se reciben camiones.</p>"
+        html += f"<p>Comida: {res['comida']}<br>Espera total de camiones: {res['espera_total']} min</p>"
         html += "<table border='1' cellpadding='5'>"
         html += "<tr><th>#</th><th>R llegada</th><th>Tiempo entre llegadas</th><th>Hora de llegada</th><th>Inicio servicio</th>"
         html += "<th>R servicio</th><th>Tiempo servicio</th><th>Fin servicio</th><th>Ocio personal</th><th>Espera camión</th><th>Longitud cola</th></tr>"
@@ -279,15 +223,6 @@ def procesar(form):
             numero = numero + 1
         html += "</table>"
 
-    return pagina(html)
-
-
-# pone el contenido dentro de una página con un botón para regresar a los datos
-def pagina(contenido):
-    html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Resultados</title></head><body>"
-    html += "<button onclick='history.back()'>Volver a los datos</button>"
-    html += contenido
-    html += "</body></html>"
     return html
 
 
@@ -296,9 +231,7 @@ def pagina(contenido):
 class Servidor(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        archivo = open("index.html", encoding="utf-8")
-        self.mandar(archivo.read())
-        archivo.close()
+        self.mandar(open("index.html", encoding="utf-8").read())
 
     def do_POST(self):
         largo = int(self.headers["Content-Length"])
