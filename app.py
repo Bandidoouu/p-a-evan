@@ -1,8 +1,12 @@
 # Simulación de colas: descarga de camiones en un almacén
-# para correrlo (desde esta carpeta):  python app.py
-# y abrir en el navegador:  http://127.0.0.1:8000
+# para usarlo: doble clic en Simulacion.exe (no necesita Python)
+#              o doble clic en app.py (si la compu tiene Python)
+# se abre solo en el navegador
 
+import os
+import sys
 import random
+import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qsl
 
@@ -246,5 +250,13 @@ class Servidor(BaseHTTPRequestHandler):
         self.wfile.write(html.encode("utf-8"))
 
 
-print("Abre en el navegador: http://127.0.0.1:8000")
-HTTPServer(("127.0.0.1", 8000), Servidor).serve_forever()
+# trabajar en la carpeta donde está el programa, para que encuentre index.html
+os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
+
+# puerto 0 = que la computadora escoja uno que esté libre
+servidor = HTTPServer(("127.0.0.1", 0), Servidor)
+direccion = "http://127.0.0.1:" + str(servidor.server_port)
+print("La simulación está abierta en " + direccion)
+print("No cierres esta ventana mientras la usas.")
+webbrowser.open(direccion)
+servidor.serve_forever()
