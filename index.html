@@ -1,78 +1,115 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Simulación de volados</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 15px; }
-        form { background: #f2f2f2; padding: 15px; border-radius: 8px; }
-        label { display: block; margin-top: 10px; }
-        input { width: 100%; padding: 6px; box-sizing: border-box; }
-        button { margin-top: 15px; padding: 10px 20px; font-size: 16px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #999; padding: 6px; text-align: center; }
-        th { background: #333; color: white; }
-        .META { background: #c8f7c5; }
-        .QUIEBRA { background: #f7c5c5; }
-    </style>
+<meta charset="UTF-8">
+<title>Simulación de colas</title>
 </head>
 <body>
 
-    <h1>Simulación de volados</h1>
-    <p>Si pierdes, duplicas la apuesta. Si ganas, regresas a la apuesta inicial.</p>
+<h1>Simulación de colas: descarga de camiones</h1>
 
-    <!-- si el usuario ya escribió un dato se queda, si no se pone el de ejemplo -->
-    <form method="POST">
-        <label>Capital inicial ($)</label>
-        <input type="number" name="capital" min="1" value="{{ request.form.capital or 50 }}" required>
+<!-- los valores que ya vienen escritos son los del problema de la libreta -->
+<form method="POST" action="/">
 
-        <label>Meta ($)</label>
-        <input type="number" name="meta" min="1" value="{{ request.form.meta or 80 }}" required>
+<h3>Horario</h3>
+<p>Abre el almacén: <input type="time" name="apertura" value="23:00" required></p>
+<p>Hora límite para recibir camiones: <input type="time" name="limite" value="07:30" required></p>
+<p>Hora de comida: <input type="time" name="comida" value="03:00" required></p>
+<p>Minutos de comida: <input type="number" name="duracion_comida" min="0" value="30" required></p>
 
-        <label>Apuesta inicial ($)</label>
-        <input type="number" name="apuesta" min="1" value="{{ request.form.apuesta or 10 }}" required>
+<h3>Costos ($ por hora)</h3>
+<p>Salario normal por persona: <input type="number" name="salario" min="0" step="any" value="25" required></p>
+<p>Salario tiempo extra por persona: <input type="number" name="salario_extra" min="0" step="any" value="37.5" required></p>
+<p>Camión esperando: <input type="number" name="costo_espera" min="0" step="any" value="100" required></p>
+<p>Almacén operando: <input type="number" name="costo_almacen" min="0" step="any" value="500" required></p>
 
-        <label>Gana si el número aleatorio es menor o igual a</label>
-        <input type="number" name="limite" min="0" max="1" step="0.0001" value="{{ request.form.limite or 0.5 }}" required>
+<h3>Tablas de probabilidad</h3>
+<p>Un renglón por valor: <b>valor probabilidad</b> (ejemplo: 20 0.02). Las probabilidades deben sumar 1.</p>
+<table>
+<tr>
+    <th>Camiones esperando al abrir</th>
+    <th>Tiempo entre llegadas (min)</th>
+</tr>
+<tr>
+<td><textarea name="inicial" rows="9" cols="15">
+0 0.50
+1 0.25
+2 0.15
+3 0.10</textarea></td>
+<td><textarea name="llegadas" rows="9" cols="15">
+20 0.02
+25 0.08
+30 0.12
+35 0.25
+40 0.20
+45 0.15
+50 0.10
+55 0.05
+60 0.03</textarea></td>
+</tr>
+</table>
 
-        <label>Número de corridas</label>
-        <input type="number" name="corridas" min="1" max="1000" value="{{ request.form.corridas or 4 }}" required>
+<h3>Equipos a comparar (tiempo de servicio en minutos)</h3>
+<p>Si dejas vacío el número de personas, ese equipo no se simula.</p>
+<table>
+<tr>
+    <th>Personas: <input type="number" name="personas1" min="1" value="3" style="width:50px"></th>
+    <th>Personas: <input type="number" name="personas2" min="1" value="4" style="width:50px"></th>
+    <th>Personas: <input type="number" name="personas3" min="1" value="5" style="width:50px"></th>
+    <th>Personas: <input type="number" name="personas4" min="1" value="6" style="width:50px"></th>
+</tr>
+<tr>
+<td><textarea name="servicio1" rows="9" cols="15">
+20 0.05
+25 0.10
+30 0.20
+35 0.25
+40 0.12
+45 0.10
+50 0.08
+55 0.06
+60 0.04</textarea></td>
+<td><textarea name="servicio2" rows="9" cols="15">
+15 0.05
+20 0.15
+25 0.20
+30 0.20
+35 0.15
+40 0.12
+45 0.08
+50 0.04
+55 0.01</textarea></td>
+<td><textarea name="servicio3" rows="9" cols="15">
+10 0.10
+15 0.18
+20 0.22
+25 0.18
+30 0.10
+35 0.08
+40 0.06
+45 0.05
+50 0.03</textarea></td>
+<td><textarea name="servicio4" rows="9" cols="15">
+5 0.12
+10 0.15
+15 0.26
+20 0.15
+25 0.12
+30 0.08
+35 0.06
+40 0.04
+45 0.02</textarea></td>
+</tr>
+</table>
 
-        <button type="submit">Simular</button>
-    </form>
+<h3>Números aleatorios (opcional)</h3>
+<p>Si los dejas vacíos se generan solos. Sirven para comprobar el resultado contra la libreta.</p>
+<p>Para camiones al abrir: <input type="text" name="r_inicial"></p>
+<p>Para llegadas:<br><textarea name="r_llegadas" rows="3" cols="60"></textarea></p>
+<p>Para servicio:<br><textarea name="r_servicio" rows="3" cols="60"></textarea></p>
 
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
-
-    {% if filas %}
-        <h2>Resumen</h2>
-        <p>Metas: {{ metas }} | Quiebras: {{ quiebras }}</p>
-        <p>Probabilidad de llegar a la meta: <b>{{ prob_meta }}%</b></p>
-        <p>Probabilidad de quiebra: <b>{{ prob_quiebra }}%</b></p>
-
-        <h2>Tabla de volados</h2>
-        <table>
-            <tr>
-                <th>Corrida</th>
-                <th>Cantidad antes</th>
-                <th>Apuesta</th>
-                <th>Número aleatorio</th>
-                <th>¿Ganó?</th>
-                <th>Cantidad después</th>
-                <th>Resultado</th>
-            </tr>
-            <!-- fila[6] es el resultado, con eso la fila se pinta verde (META) o roja (QUIEBRA) -->
-            {% for fila in filas %}
-            <tr class="{{ fila[6] }}">
-                {% for dato in fila %}
-                <td>{{ dato }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </table>
-    {% endif %}
+<button type="submit">Simular</button>
+</form>
 
 </body>
 </html>
