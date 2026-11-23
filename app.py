@@ -1,9 +1,4 @@
-import os
-import sys
 import random
-import webbrowser
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import parse_qsl
 
 
 def a_minutos(texto):
@@ -21,18 +16,26 @@ def a_hora(minutos):
     return str(h) + ":" + str(m)
 
 
-def leer_tabla(texto):
+def pedir(texto, defecto):
+    dato = input(texto + " [" + defecto + "]: ")
+    if dato == "":
+        return defecto
+    return dato
+
+
+def pedir_tabla(texto, valores, probabilidades):
+    print(texto)
+    valores = pedir("  Valores", valores).split()
+    probabilidades = pedir("  Probabilidades", probabilidades).split()
     tabla = []
-    for renglon in texto.splitlines():
-        partes = renglon.split()
-        if len(partes) == 2:
-            tabla.append([int(partes[0]), float(partes[1])])
+    for i in range(len(valores)):
+        tabla.append([int(valores[i]), float(probabilidades[i])])
     return tabla
 
 
-def leer_aleatorios(texto):
+def pedir_aleatorios(texto):
     numeros = []
-    for x in texto.split():
+    for x in input(texto + " [al azar]: ").split():
         numeros.append(float(x))
     while len(numeros) < 500:
         numeros.append(round(random.random(), 5))
@@ -47,22 +50,21 @@ def buscar(r, tabla):
             return renglon[0]
 
 
-def simular(personas, servicio, datos):
+def simular(personas, tabla_servicio):
     filas = []
 
-    iniciales = buscar(datos["r_inicial"], datos["inicial"])
-    for i in range(iniciales):
-        filas.append({"r_llegada": "-", "entre": "-", "llegada": datos["apertura"]})
+    for i in range(buscar(r_inicial, tabla_inicial)):
+        filas.append({"r_llegada": "-", "entre": "-", "llegada": apertura})
 
-    llegada = datos["apertura"]
-    for r in datos["r_llegadas"]:
-        entre = buscar(r, datos["llegadas"])
+    llegada = apertura
+    for r in r_llegadas:
+        entre = buscar(r, tabla_llegadas)
         llegada = llegada + entre
-        if llegada > datos["limite"]:
+        if llegada > limite:
             break
         filas.append({"r_llegada": r, "entre": entre, "llegada": llegada})
 
-    fin_anterior = datos["apertura"]
+    fin_anterior = apertura
     comieron = False
     comida = "-"
 
@@ -75,17 +77,17 @@ def simular(personas, servicio, datos):
             inicio = fin_anterior
         ocio = inicio - fin_anterior
 
-        if comieron == False and inicio >= datos["comida"]:
-            if fin_anterior > datos["comida"]:
+        if comieron == False and inicio >= hora_comida:
+            if fin_anterior > hora_comida:
                 inicio_comida = fin_anterior
             else:
-                inicio_comida = datos["comida"]
-            fin_comida = inicio_comida + datos["duracion_comida"]
+                inicio_comida = hora_comida
+            fin_comida = inicio_comida + minutos_comida
             if fila["llegada"] > fin_comida:
                 inicio = fila["llegada"]
             else:
                 inicio = fin_comida
-            ocio = inicio - fin_anterior - datos["duracion_comida"]
+            ocio = inicio - fin_anterior - minutos_comida
             comieron = True
             comida = a_hora(inicio_comida) + " a " + a_hora(fin_comida)
 
@@ -94,10 +96,9 @@ def simular(personas, servicio, datos):
             if filas[j]["fin"] > fila["llegada"]:
                 cola = cola + 1
 
-        r = datos["r_servicio"][i]
         fila["inicio"] = inicio
-        fila["r_servicio"] = r
-        fila["servicio"] = buscar(r, servicio)
+        fila["r_servicio"] = r_servicio[i]
+        fila["servicio"] = buscar(r_servicio[i], tabla_servicio)
         fila["fin"] = inicio + fila["servicio"]
         fila["ocio"] = ocio
         fila["espera"] = inicio - fila["llegada"]
@@ -109,97 +110,75 @@ def simular(personas, servicio, datos):
         espera = espera + fila["espera"]
 
     extra = 0
-    if fin_anterior > datos["limite"]:
-        extra = fin_anterior - datos["limite"]
+    if fin_anterior > limite:
+        extra = fin_anterior - limite
 
-    horas = (datos["limite"] - datos["apertura"]) / 60
+    horas = (limite - apertura) / 60
     resultado = {"personas": personas, "filas": filas, "comida": comida, "espera": espera}
-    resultado["normal"] = personas * horas * datos["salario"]
-    resultado["extra"] = personas * extra / 60 * datos["salario_extra"]
-    resultado["costo_espera"] = espera / 60 * datos["costo_espera"]
-    resultado["almacen"] = (horas + extra / 60) * datos["costo_almacen"]
+    resultado["normal"] = personas * horas * salario
+    resultado["extra"] = personas * extra / 60 * salario_extra
+    resultado["costo_espera"] = espera / 60 * costo_espera
+    resultado["almacen"] = (horas + extra / 60) * costo_almacen
     resultado["total"] = resultado["normal"] + resultado["extra"] + resultado["costo_espera"] + resultado["almacen"]
     return resultado
 
 
-def procesar(form):
-    datos = {}
-    datos["apertura"] = a_minutos(form["apertura"])
-    datos["limite"] = a_minutos(form["limite"])
-    datos["comida"] = a_minutos(form["comida"])
-    if datos["limite"] < datos["apertura"]:
-        datos["limite"] = datos["limite"] + 24 * 60
-    if datos["comida"] < datos["apertura"]:
-        datos["comida"] = datos["comida"] + 24 * 60
-    datos["duracion_comida"] = int(form["duracion_comida"])
-    datos["salario"] = float(form["salario"])
-    datos["salario_extra"] = float(form["salario_extra"])
-    datos["costo_espera"] = float(form["costo_espera"])
-    datos["costo_almacen"] = float(form["costo_almacen"])
-    datos["inicial"] = leer_tabla(form["inicial"])
-    datos["llegadas"] = leer_tabla(form["llegadas"])
-    datos["r_inicial"] = leer_aleatorios(form["r_inicial"])[0]
-    datos["r_llegadas"] = leer_aleatorios(form["r_llegadas"])
-    datos["r_servicio"] = leer_aleatorios(form["r_servicio"])
+apertura = a_minutos(pedir("Hora de apertura", "23:00"))
+limite = a_minutos(pedir("Hora límite de llegada", "07:30"))
+hora_comida = a_minutos(pedir("Hora de comida", "03:00"))
+minutos_comida = int(pedir("Minutos de comida", "30"))
+if limite < apertura:
+    limite = limite + 24 * 60
+if hora_comida < apertura:
+    hora_comida = hora_comida + 24 * 60
 
-    resultados = []
-    for i in ["1", "2", "3", "4"]:
-        resultados.append(simular(int(form["personas" + i]), leer_tabla(form["servicio" + i]), datos))
+salario = float(pedir("Salario normal por hora", "25"))
+salario_extra = float(pedir("Salario extra por hora", "37.5"))
+costo_espera = float(pedir("Costo por hora de camión esperando", "100"))
+costo_almacen = float(pedir("Costo por hora del almacén", "500"))
 
-    mejor = resultados[0]
-    for res in resultados:
-        if res["total"] < mejor["total"]:
-            mejor = res
+tabla_inicial = pedir_tabla("Camiones esperando al abrir", "0 1 2 3", ".50 .25 .15 .10")
+tabla_llegadas = pedir_tabla("Tiempo entre llegadas", "20 25 30 35 40 45 50 55 60", ".02 .08 .12 .25 .20 .15 .10 .05 .03")
 
-    html = open("index.html", encoding="utf-8").read().split("<form")[0]
-    html += "<div class='caja'><h2>Comparación de equipos</h2><div class='tabla'><table>"
-    html += "<tr><th>Personas</th><th>Salario normal</th><th>Tiempo extra</th><th>Espera camiones</th><th>Almacén</th><th>Costo total</th></tr>"
-    for res in resultados:
-        html += f"<tr><td>{res['personas']}</td>"
-        html += f"<td>${res['normal']:.2f}</td>"
-        html += f"<td>${res['extra']:.2f}</td>"
-        html += f"<td>${res['costo_espera']:.2f}</td>"
-        html += f"<td>${res['almacen']:.2f}</td>"
-        html += f"<td>${res['total']:.2f}</td></tr>"
-    html += "</table></div>"
-    html += f"<p class='optimo'>Equipo óptimo: {mejor['personas']} personas (${mejor['total']:.2f})</p>"
-    html += f"<p class='nota'>R para camiones al abrir: {datos['r_inicial']}</p></div>"
+r_inicial = pedir_aleatorios("Aleatorio para camiones al abrir")[0]
+r_llegadas = pedir_aleatorios("Aleatorios para llegadas")
+r_servicio = pedir_aleatorios("Aleatorios para servicio")
 
-    for res in resultados:
-        html += f"<div class='caja'><h2>Equipo de {res['personas']} personas</h2>"
-        html += f"<p class='nota'>Comida: {res['comida']} &nbsp;|&nbsp; Espera total de camiones: {res['espera']} min</p>"
-        html += "<div class='tabla'><table><tr><th>#</th><th>R llegada</th><th>Tiempo entre llegadas</th><th>Hora de llegada</th><th>Inicio servicio</th>"
-        html += "<th>R servicio</th><th>Tiempo servicio</th><th>Fin servicio</th><th>Ocio personal</th><th>Espera camión</th><th>Longitud cola</th></tr>"
-        numero = 1
-        for f in res["filas"]:
-            html += f"<tr><td>{numero}</td><td>{f['r_llegada']}</td><td>{f['entre']}</td><td>{a_hora(f['llegada'])}</td>"
-            html += f"<td>{a_hora(f['inicio'])}</td><td>{f['r_servicio']}</td><td>{f['servicio']}</td><td>{a_hora(f['fin'])}</td>"
-            html += f"<td>{f['ocio']}</td><td>{f['espera']}</td><td>{f['cola']}</td></tr>"
-            numero = numero + 1
-        html += "</table></div></div>"
+equipos = [
+    ["3", "20 25 30 35 40 45 50 55 60", ".05 .10 .20 .25 .12 .10 .08 .06 .04"],
+    ["4", "15 20 25 30 35 40 45 50 55", ".05 .15 .20 .20 .15 .12 .08 .04 .01"],
+    ["5", "10 15 20 25 30 35 40 45 50", ".10 .18 .22 .18 .10 .08 .06 .05 .03"],
+    ["6", "5 10 15 20 25 30 35 40 45", ".12 .15 .26 .15 .12 .08 .06 .04 .02"],
+]
 
-    html += "</main></body></html>"
-    return html
+resultados = []
+for equipo in equipos:
+    personas = pedir("Personas del equipo", equipo[0])
+    tabla_servicio = pedir_tabla("Tiempo de servicio con " + personas + " personas", equipo[1], equipo[2])
+    resultados.append(simular(int(personas), tabla_servicio))
 
+print()
+print("Aleatorio para camiones al abrir:", r_inicial)
 
-class Servidor(BaseHTTPRequestHandler):
+for res in resultados:
+    print()
+    print("EQUIPO DE", res["personas"], "PERSONAS")
+    print("Comida:", res["comida"], "   Espera total:", res["espera"], "min")
+    print("#", "R lleg", "Entre", "Llega", "Inicio", "R serv", "Serv", "Fin", "Ocio", "Espera", "Cola", sep="\t")
+    numero = 1
+    for f in res["filas"]:
+        print(numero, f["r_llegada"], f["entre"], a_hora(f["llegada"]), a_hora(f["inicio"]), f["r_servicio"], f["servicio"], a_hora(f["fin"]), f["ocio"], f["espera"], f["cola"], sep="\t")
+        numero = numero + 1
 
-    def do_GET(self):
-        self.responder(open("index.html", encoding="utf-8").read())
+print()
+print("COMPARACIÓN DE COSTOS")
+print("Equipo", "Normal", "Extra", "Espera", "Almacén", "Total", sep="\t")
+mejor = resultados[0]
+for res in resultados:
+    print(res["personas"], round(res["normal"], 2), round(res["extra"], 2), round(res["costo_espera"], 2), round(res["almacen"], 2), round(res["total"], 2), sep="\t")
+    if res["total"] < mejor["total"]:
+        mejor = res
 
-    def do_POST(self):
-        largo = int(self.headers["Content-Length"])
-        form = dict(parse_qsl(self.rfile.read(largo).decode("utf-8"), keep_blank_values=True))
-        self.responder(procesar(form))
-
-    def responder(self, html):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(html.encode("utf-8"))
-
-
-os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-servidor = HTTPServer(("127.0.0.1", 0), Servidor)
-webbrowser.open("http://127.0.0.1:" + str(servidor.server_port))
-servidor.serve_forever()
+print()
+print("Equipo óptimo:", mejor["personas"], "personas con costo de", round(mejor["total"], 2))
+input()
