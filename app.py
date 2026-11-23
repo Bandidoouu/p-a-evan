@@ -1,4 +1,3 @@
-import random
 import tkinter as tk
 from tkinter import scrolledtext
 
@@ -27,12 +26,12 @@ def leer_tabla(texto):
     return tabla
 
 
-def leer_aleatorios(texto):
+def congruencial(semilla, a, c, m, cantidad):
     numeros = []
-    for x in texto.split():
-        numeros.append(float(x))
-    while len(numeros) < 500:
-        numeros.append(round(random.random(), 5))
+    x = semilla
+    for i in range(cantidad):
+        x = (a * x + c) % m
+        numeros.append(round(x / m, 5))
     return numeros
 
 
@@ -133,9 +132,10 @@ def boton_simular():
     datos["costo_almacen"] = float(costo_almacen.get())
     datos["inicial"] = leer_tabla(inicial.get("1.0", "end"))
     datos["llegadas"] = leer_tabla(llegadas.get("1.0", "end"))
-    datos["r_inicial"] = leer_aleatorios(r_inicial.get())[0]
-    datos["r_llegadas"] = leer_aleatorios(r_llegadas.get())
-    datos["r_servicio"] = leer_aleatorios(r_servicio.get())
+    numeros = congruencial(int(semilla.get()), int(multiplicador.get()), int(incremento.get()), int(modulo.get()), 200)
+    datos["r_inicial"] = numeros[0]
+    datos["r_llegadas"] = numeros[1:100]
+    datos["r_servicio"] = numeros[100:]
 
     resultados = []
     for equipo in equipos:
@@ -198,9 +198,10 @@ personas1 = campo("Personas equipo 1", "3", 8, 0)
 personas2 = campo("Personas equipo 2", "4", 9, 0)
 personas3 = campo("Personas equipo 3", "5", 10, 0)
 personas4 = campo("Personas equipo 4", "6", 11, 0)
-r_inicial = campo("Aleatorio camiones al abrir (vacío = al azar)", "", 12, 0)
-r_llegadas = campo("Aleatorios llegadas (vacío = al azar)", "", 13, 0)
-r_servicio = campo("Aleatorios servicio (vacío = al azar)", "", 14, 0)
+semilla = campo("Semilla (X0)", "12345", 12, 0)
+multiplicador = campo("Multiplicador (a)", "1021", 13, 0)
+incremento = campo("Incremento (c)", "7", 14, 0)
+modulo = campo("Módulo (m)", "100000", 15, 0)
 
 inicial = cuadro("Camiones al abrir", "0 .50\n1 .25\n2 .15\n3 .10", 2)
 llegadas = cuadro("Entre llegadas", "20 .02\n25 .08\n30 .12\n35 .25\n40 .20\n45 .15\n50 .10\n55 .05\n60 .03", 3)
@@ -211,8 +212,8 @@ servicio4 = cuadro("Servicio equipo 4", "5 .12\n10 .15\n15 .26\n20 .15\n25 .12\n
 
 equipos = [[personas1, servicio1], [personas2, servicio2], [personas3, servicio3], [personas4, servicio4]]
 
-tk.Button(ventana, text="Simular", width=20, command=boton_simular).grid(row=15, column=0, columnspan=8, pady=8)
+tk.Button(ventana, text="Simular", width=20, command=boton_simular).grid(row=16, column=0, columnspan=8, pady=8)
 pantalla = scrolledtext.ScrolledText(ventana, height=18, font=("Consolas", 10))
-pantalla.grid(row=16, column=0, columnspan=8, padx=5, pady=5, sticky="we")
+pantalla.grid(row=17, column=0, columnspan=8, padx=5, pady=5, sticky="we")
 
 ventana.mainloop()
