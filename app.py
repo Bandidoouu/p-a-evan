@@ -1,4 +1,6 @@
 import random
+import tkinter as tk
+from tkinter import scrolledtext
 
 
 def a_minutos(texto):
@@ -16,26 +18,18 @@ def a_hora(minutos):
     return str(h) + ":" + str(m)
 
 
-def pedir(texto, defecto):
-    dato = input(texto + " [" + defecto + "]: ")
-    if dato == "":
-        return defecto
-    return dato
-
-
-def pedir_tabla(texto, valores, probabilidades):
-    print(texto)
-    valores = pedir("  Valores", valores).split()
-    probabilidades = pedir("  Probabilidades", probabilidades).split()
+def leer_tabla(texto):
     tabla = []
-    for i in range(len(valores)):
-        tabla.append([int(valores[i]), float(probabilidades[i])])
+    for renglon in texto.split("\n"):
+        partes = renglon.split()
+        if len(partes) == 2:
+            tabla.append([int(partes[0]), float(partes[1])])
     return tabla
 
 
-def pedir_aleatorios(texto):
+def leer_aleatorios(texto):
     numeros = []
-    for x in input(texto + " [al azar]: ").split():
+    for x in texto.split():
         numeros.append(float(x))
     while len(numeros) < 500:
         numeros.append(round(random.random(), 5))
@@ -50,21 +44,21 @@ def buscar(r, tabla):
             return renglon[0]
 
 
-def simular(personas, tabla_servicio):
+def simular(personas, tabla_servicio, datos):
     filas = []
 
-    for i in range(buscar(r_inicial, tabla_inicial)):
-        filas.append({"r_llegada": "-", "entre": "-", "llegada": apertura})
+    for i in range(buscar(datos["r_inicial"], datos["inicial"])):
+        filas.append({"r_llegada": "-", "entre": "-", "llegada": datos["apertura"]})
 
-    llegada = apertura
-    for r in r_llegadas:
-        entre = buscar(r, tabla_llegadas)
+    llegada = datos["apertura"]
+    for r in datos["r_llegadas"]:
+        entre = buscar(r, datos["llegadas"])
         llegada = llegada + entre
-        if llegada > limite:
+        if llegada > datos["limite"]:
             break
         filas.append({"r_llegada": r, "entre": entre, "llegada": llegada})
 
-    fin_anterior = apertura
+    fin_anterior = datos["apertura"]
     comieron = False
     comida = "-"
 
@@ -77,17 +71,17 @@ def simular(personas, tabla_servicio):
             inicio = fin_anterior
         ocio = inicio - fin_anterior
 
-        if comieron == False and inicio >= hora_comida:
-            if fin_anterior > hora_comida:
+        if comieron == False and inicio >= datos["hora_comida"]:
+            if fin_anterior > datos["hora_comida"]:
                 inicio_comida = fin_anterior
             else:
-                inicio_comida = hora_comida
-            fin_comida = inicio_comida + minutos_comida
+                inicio_comida = datos["hora_comida"]
+            fin_comida = inicio_comida + datos["minutos_comida"]
             if fila["llegada"] > fin_comida:
                 inicio = fila["llegada"]
             else:
                 inicio = fin_comida
-            ocio = inicio - fin_anterior - minutos_comida
+            ocio = inicio - fin_anterior - datos["minutos_comida"]
             comieron = True
             comida = a_hora(inicio_comida) + " a " + a_hora(fin_comida)
 
@@ -97,8 +91,8 @@ def simular(personas, tabla_servicio):
                 cola = cola + 1
 
         fila["inicio"] = inicio
-        fila["r_servicio"] = r_servicio[i]
-        fila["servicio"] = buscar(r_servicio[i], tabla_servicio)
+        fila["r_servicio"] = datos["r_servicio"][i]
+        fila["servicio"] = buscar(datos["r_servicio"][i], tabla_servicio)
         fila["fin"] = inicio + fila["servicio"]
         fila["ocio"] = ocio
         fila["espera"] = inicio - fila["llegada"]
@@ -110,75 +104,115 @@ def simular(personas, tabla_servicio):
         espera = espera + fila["espera"]
 
     extra = 0
-    if fin_anterior > limite:
-        extra = fin_anterior - limite
+    if fin_anterior > datos["limite"]:
+        extra = fin_anterior - datos["limite"]
 
-    horas = (limite - apertura) / 60
+    horas = (datos["limite"] - datos["apertura"]) / 60
     resultado = {"personas": personas, "filas": filas, "comida": comida, "espera": espera}
-    resultado["normal"] = personas * horas * salario
-    resultado["extra"] = personas * extra / 60 * salario_extra
-    resultado["costo_espera"] = espera / 60 * costo_espera
-    resultado["almacen"] = (horas + extra / 60) * costo_almacen
+    resultado["normal"] = personas * horas * datos["salario"]
+    resultado["extra"] = personas * extra / 60 * datos["salario_extra"]
+    resultado["costo_espera"] = espera / 60 * datos["costo_espera"]
+    resultado["almacen"] = (horas + extra / 60) * datos["costo_almacen"]
     resultado["total"] = resultado["normal"] + resultado["extra"] + resultado["costo_espera"] + resultado["almacen"]
     return resultado
 
 
-apertura = a_minutos(pedir("Hora de apertura", "23:00"))
-limite = a_minutos(pedir("Hora límite de llegada", "07:30"))
-hora_comida = a_minutos(pedir("Hora de comida", "03:00"))
-minutos_comida = int(pedir("Minutos de comida", "30"))
-if limite < apertura:
-    limite = limite + 24 * 60
-if hora_comida < apertura:
-    hora_comida = hora_comida + 24 * 60
+def boton_simular():
+    datos = {}
+    datos["apertura"] = a_minutos(apertura.get())
+    datos["limite"] = a_minutos(limite.get())
+    datos["hora_comida"] = a_minutos(hora_comida.get())
+    if datos["limite"] < datos["apertura"]:
+        datos["limite"] = datos["limite"] + 24 * 60
+    if datos["hora_comida"] < datos["apertura"]:
+        datos["hora_comida"] = datos["hora_comida"] + 24 * 60
+    datos["minutos_comida"] = int(minutos_comida.get())
+    datos["salario"] = float(salario.get())
+    datos["salario_extra"] = float(salario_extra.get())
+    datos["costo_espera"] = float(costo_espera.get())
+    datos["costo_almacen"] = float(costo_almacen.get())
+    datos["inicial"] = leer_tabla(inicial.get("1.0", "end"))
+    datos["llegadas"] = leer_tabla(llegadas.get("1.0", "end"))
+    datos["r_inicial"] = leer_aleatorios(r_inicial.get())[0]
+    datos["r_llegadas"] = leer_aleatorios(r_llegadas.get())
+    datos["r_servicio"] = leer_aleatorios(r_servicio.get())
 
-salario = float(pedir("Salario normal por hora", "25"))
-salario_extra = float(pedir("Salario extra por hora", "37.5"))
-costo_espera = float(pedir("Costo por hora de camión esperando", "100"))
-costo_almacen = float(pedir("Costo por hora del almacén", "500"))
+    resultados = []
+    for equipo in equipos:
+        resultados.append(simular(int(equipo[0].get()), leer_tabla(equipo[1].get("1.0", "end")), datos))
 
-tabla_inicial = pedir_tabla("Camiones esperando al abrir", "0 1 2 3", ".50 .25 .15 .10")
-tabla_llegadas = pedir_tabla("Tiempo entre llegadas", "20 25 30 35 40 45 50 55 60", ".02 .08 .12 .25 .20 .15 .10 .05 .03")
+    mejor = resultados[0]
+    for res in resultados:
+        if res["total"] < mejor["total"]:
+            mejor = res
 
-r_inicial = pedir_aleatorios("Aleatorio para camiones al abrir")[0]
-r_llegadas = pedir_aleatorios("Aleatorios para llegadas")
-r_servicio = pedir_aleatorios("Aleatorios para servicio")
+    salida = "COMPARACIÓN DE COSTOS\n"
+    salida += "Equipo\tNormal\tExtra\tEspera\tAlmacén\tTotal\n"
+    for res in resultados:
+        salida += f"{res['personas']}\t{res['normal']:.2f}\t{res['extra']:.2f}\t{res['costo_espera']:.2f}\t{res['almacen']:.2f}\t{res['total']:.2f}\n"
+    salida += f"\nEquipo óptimo: {mejor['personas']} personas con costo de ${mejor['total']:.2f}\n"
+    salida += f"Aleatorio para camiones al abrir: {datos['r_inicial']}\n"
 
-equipos = [
-    ["3", "20 25 30 35 40 45 50 55 60", ".05 .10 .20 .25 .12 .10 .08 .06 .04"],
-    ["4", "15 20 25 30 35 40 45 50 55", ".05 .15 .20 .20 .15 .12 .08 .04 .01"],
-    ["5", "10 15 20 25 30 35 40 45 50", ".10 .18 .22 .18 .10 .08 .06 .05 .03"],
-    ["6", "5 10 15 20 25 30 35 40 45", ".12 .15 .26 .15 .12 .08 .06 .04 .02"],
-]
+    for res in resultados:
+        salida += f"\nEQUIPO DE {res['personas']} PERSONAS\n"
+        salida += f"Comida: {res['comida']}    Espera total: {res['espera']} min\n"
+        salida += "#\tR lleg\tEntre\tLlega\tInicio\tR serv\tServ\tFin\tOcio\tEspera\tCola\n"
+        numero = 1
+        for f in res["filas"]:
+            salida += f"{numero}\t{f['r_llegada']}\t{f['entre']}\t{a_hora(f['llegada'])}\t{a_hora(f['inicio'])}\t"
+            salida += f"{f['r_servicio']}\t{f['servicio']}\t{a_hora(f['fin'])}\t{f['ocio']}\t{f['espera']}\t{f['cola']}\n"
+            numero = numero + 1
 
-resultados = []
-for equipo in equipos:
-    personas = pedir("Personas del equipo", equipo[0])
-    tabla_servicio = pedir_tabla("Tiempo de servicio con " + personas + " personas", equipo[1], equipo[2])
-    resultados.append(simular(int(personas), tabla_servicio))
+    pantalla.delete("1.0", "end")
+    pantalla.insert("1.0", salida)
 
-print()
-print("Aleatorio para camiones al abrir:", r_inicial)
 
-for res in resultados:
-    print()
-    print("EQUIPO DE", res["personas"], "PERSONAS")
-    print("Comida:", res["comida"], "   Espera total:", res["espera"], "min")
-    print("#", "R lleg", "Entre", "Llega", "Inicio", "R serv", "Serv", "Fin", "Ocio", "Espera", "Cola", sep="\t")
-    numero = 1
-    for f in res["filas"]:
-        print(numero, f["r_llegada"], f["entre"], a_hora(f["llegada"]), a_hora(f["inicio"]), f["r_servicio"], f["servicio"], a_hora(f["fin"]), f["ocio"], f["espera"], f["cola"], sep="\t")
-        numero = numero + 1
+def campo(texto, valor, fila, columna):
+    tk.Label(ventana, text=texto).grid(row=fila, column=columna, sticky="w", padx=5, pady=2)
+    entrada = tk.Entry(ventana, width=35)
+    entrada.insert(0, valor)
+    entrada.grid(row=fila, column=columna + 1, padx=5, pady=2)
+    return entrada
 
-print()
-print("COMPARACIÓN DE COSTOS")
-print("Equipo", "Normal", "Extra", "Espera", "Almacén", "Total", sep="\t")
-mejor = resultados[0]
-for res in resultados:
-    print(res["personas"], round(res["normal"], 2), round(res["extra"], 2), round(res["costo_espera"], 2), round(res["almacen"], 2), round(res["total"], 2), sep="\t")
-    if res["total"] < mejor["total"]:
-        mejor = res
 
-print()
-print("Equipo óptimo:", mejor["personas"], "personas con costo de", round(mejor["total"], 2))
-input()
+def cuadro(texto, valor, columna):
+    tk.Label(ventana, text=texto).grid(row=0, column=columna, padx=5)
+    caja = tk.Text(ventana, width=10, height=10)
+    caja.insert("1.0", valor)
+    caja.grid(row=1, column=columna, rowspan=14, padx=5, sticky="n")
+    return caja
+
+
+ventana = tk.Tk()
+ventana.title("Simulación de colas")
+
+apertura = campo("Hora de apertura", "23:00", 0, 0)
+limite = campo("Hora límite de llegada", "07:30", 1, 0)
+hora_comida = campo("Hora de comida", "03:00", 2, 0)
+minutos_comida = campo("Minutos de comida", "30", 3, 0)
+salario = campo("Salario normal por hora", "25", 4, 0)
+salario_extra = campo("Salario extra por hora", "37.5", 5, 0)
+costo_espera = campo("Costo por hora de camión esperando", "100", 6, 0)
+costo_almacen = campo("Costo por hora del almacén", "500", 7, 0)
+personas1 = campo("Personas equipo 1", "3", 8, 0)
+personas2 = campo("Personas equipo 2", "4", 9, 0)
+personas3 = campo("Personas equipo 3", "5", 10, 0)
+personas4 = campo("Personas equipo 4", "6", 11, 0)
+r_inicial = campo("Aleatorio camiones al abrir (vacío = al azar)", "", 12, 0)
+r_llegadas = campo("Aleatorios llegadas (vacío = al azar)", "", 13, 0)
+r_servicio = campo("Aleatorios servicio (vacío = al azar)", "", 14, 0)
+
+inicial = cuadro("Camiones al abrir", "0 .50\n1 .25\n2 .15\n3 .10", 2)
+llegadas = cuadro("Entre llegadas", "20 .02\n25 .08\n30 .12\n35 .25\n40 .20\n45 .15\n50 .10\n55 .05\n60 .03", 3)
+servicio1 = cuadro("Servicio equipo 1", "20 .05\n25 .10\n30 .20\n35 .25\n40 .12\n45 .10\n50 .08\n55 .06\n60 .04", 4)
+servicio2 = cuadro("Servicio equipo 2", "15 .05\n20 .15\n25 .20\n30 .20\n35 .15\n40 .12\n45 .08\n50 .04\n55 .01", 5)
+servicio3 = cuadro("Servicio equipo 3", "10 .10\n15 .18\n20 .22\n25 .18\n30 .10\n35 .08\n40 .06\n45 .05\n50 .03", 6)
+servicio4 = cuadro("Servicio equipo 4", "5 .12\n10 .15\n15 .26\n20 .15\n25 .12\n30 .08\n35 .06\n40 .04\n45 .02", 7)
+
+equipos = [[personas1, servicio1], [personas2, servicio2], [personas3, servicio3], [personas4, servicio4]]
+
+tk.Button(ventana, text="Simular", width=20, command=boton_simular).grid(row=15, column=0, columnspan=8, pady=8)
+pantalla = scrolledtext.ScrolledText(ventana, height=18, font=("Consolas", 10))
+pantalla.grid(row=16, column=0, columnspan=8, padx=5, pady=5, sticky="we")
+
+ventana.mainloop()
