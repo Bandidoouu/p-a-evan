@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulación de colas</title>
 <style>
 body { margin: 0; background: #eef1f5; color: #222; font-family: "Segoe UI", Arial, sans-serif; }
@@ -16,47 +15,43 @@ label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: bold; 
 input, textarea { width: 100%; box-sizing: border-box; padding: 7px; border: 1px solid #b8c2cc; border-radius: 6px; font-size: 14px; }
 input + textarea { margin-top: 8px; }
 textarea { font-family: Consolas, monospace; resize: vertical; }
-button { padding: 11px 26px; border: none; border-radius: 6px; background: #1f6feb; color: white; font-size: 16px; cursor: pointer; }
-button:hover { background: #1858c4; }
+button { padding: 11px 26px; border: none; border-radius: 6px; background: #1f6feb; color: white; font-size: 16px; }
 .tabla { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { padding: 8px 6px; background: #1f3b5a; color: white; }
 td { padding: 6px; text-align: center; border-bottom: 1px solid #dde3ea; }
 tr:nth-child(even) td { background: #f6f8fa; }
-tr.mejor td { background: #d3f4d3; font-weight: bold; }
 .optimo { margin-bottom: 4px; color: #1a7f37; font-size: 18px; font-weight: bold; }
 </style>
 </head>
 <body>
 <main>
 <h1>Simulación de colas</h1>
-<p class="nota">Descarga de camiones en un almacén: ¿con cuántas personas sale más barato?</p>
 
 <form method="POST">
 
 <div class="caja">
 <h2>Horario</h2>
 <div class="campos">
-<div><label>Abre el almacén</label><input type="time" name="apertura" value="23:00" required></div>
-<div><label>Hora límite para recibir camiones</label><input type="time" name="limite" value="07:30" required></div>
-<div><label>Hora de comida</label><input type="time" name="comida" value="03:00" required></div>
-<div><label>Minutos de comida</label><input type="number" name="duracion_comida" min="0" value="30" required></div>
+<div><label>Abre el almacén</label><input name="apertura" value="23:00"></div>
+<div><label>Hora límite para recibir camiones</label><input name="limite" value="07:30"></div>
+<div><label>Hora de comida</label><input name="comida" value="03:00"></div>
+<div><label>Minutos de comida</label><input name="duracion_comida" value="30"></div>
 </div>
 </div>
 
 <div class="caja">
 <h2>Costos por hora</h2>
 <div class="campos">
-<div><label>Salario normal por persona ($)</label><input type="number" name="salario" min="0" step="any" value="25" required></div>
-<div><label>Salario extra por persona ($)</label><input type="number" name="salario_extra" min="0" step="any" value="37.5" required></div>
-<div><label>Camión esperando ($)</label><input type="number" name="costo_espera" min="0" step="any" value="100" required></div>
-<div><label>Almacén operando ($)</label><input type="number" name="costo_almacen" min="0" step="any" value="500" required></div>
+<div><label>Salario normal por persona ($)</label><input name="salario" value="25"></div>
+<div><label>Salario extra por persona ($)</label><input name="salario_extra" value="37.5"></div>
+<div><label>Camión esperando ($)</label><input name="costo_espera" value="100"></div>
+<div><label>Almacén operando ($)</label><input name="costo_almacen" value="500"></div>
 </div>
 </div>
 
 <div class="caja">
 <h2>Tablas de probabilidad</h2>
-<p class="nota">Un renglón por valor: <b>valor probabilidad</b>. Las probabilidades deben sumar 1.</p>
 <div class="campos">
 <div><label>Camiones esperando al abrir</label><textarea name="inicial" rows="9">
 0 0.50
@@ -78,9 +73,8 @@ tr.mejor td { background: #d3f4d3; font-weight: bold; }
 
 <div class="caja">
 <h2>Equipos a comparar</h2>
-<p class="nota">Número de personas y su tabla de tiempo de servicio (min).</p>
 <div class="campos">
-<div><label>Personas</label><input type="number" name="personas1" min="1" value="3" required><textarea name="servicio1" rows="9">
+<div><label>Personas</label><input name="personas1" value="3"><textarea name="servicio1" rows="9">
 20 0.05
 25 0.10
 30 0.20
@@ -90,7 +84,7 @@ tr.mejor td { background: #d3f4d3; font-weight: bold; }
 50 0.08
 55 0.06
 60 0.04</textarea></div>
-<div><label>Personas</label><input type="number" name="personas2" min="1" value="4" required><textarea name="servicio2" rows="9">
+<div><label>Personas</label><input name="personas2" value="4"><textarea name="servicio2" rows="9">
 15 0.05
 20 0.15
 25 0.20
@@ -100,7 +94,7 @@ tr.mejor td { background: #d3f4d3; font-weight: bold; }
 45 0.08
 50 0.04
 55 0.01</textarea></div>
-<div><label>Personas</label><input type="number" name="personas3" min="1" value="5" required><textarea name="servicio3" rows="9">
+<div><label>Personas</label><input name="personas3" value="5"><textarea name="servicio3" rows="9">
 10 0.10
 15 0.18
 20 0.22
@@ -110,7 +104,7 @@ tr.mejor td { background: #d3f4d3; font-weight: bold; }
 40 0.06
 45 0.05
 50 0.03</textarea></div>
-<div><label>Personas</label><input type="number" name="personas4" min="1" value="6" required><textarea name="servicio4" rows="9">
+<div><label>Personas</label><input name="personas4" value="6"><textarea name="servicio4" rows="9">
 5 0.12
 10 0.15
 15 0.26
@@ -125,15 +119,14 @@ tr.mejor td { background: #d3f4d3; font-weight: bold; }
 
 <div class="caja">
 <h2>Números aleatorios (opcional)</h2>
-<p class="nota">Si se dejan vacíos se generan solos. Sirven para comparar con la tabla hecha a mano.</p>
 <div class="campos">
-<div><label>Para camiones al abrir</label><input type="text" name="r_inicial"></div>
+<div><label>Para camiones al abrir</label><input name="r_inicial"></div>
 <div><label>Para llegadas</label><textarea name="r_llegadas" rows="3"></textarea></div>
 <div><label>Para servicio</label><textarea name="r_servicio" rows="3"></textarea></div>
 </div>
 </div>
 
-<button type="submit">Simular</button>
+<button>Simular</button>
 </form>
 </main>
 </body>

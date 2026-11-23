@@ -32,7 +32,7 @@ def leer_tabla(texto):
 
 def leer_aleatorios(texto):
     numeros = []
-    for x in texto.replace(",", " ").split():
+    for x in texto.split():
         numeros.append(float(x))
     while len(numeros) < 500:
         numeros.append(round(random.random(), 5))
@@ -45,7 +45,6 @@ def buscar(r, tabla):
         acumulada = round(acumulada + renglon[1], 4)
         if r <= acumulada:
             return renglon[0]
-    return tabla[-1][0]
 
 
 def simular(personas, servicio, datos):
@@ -65,7 +64,7 @@ def simular(personas, servicio, datos):
 
     fin_anterior = datos["apertura"]
     comieron = False
-    comida = "no les tocó comer"
+    comida = "-"
 
     for i in range(len(filas)):
         fila = filas[i]
@@ -153,15 +152,10 @@ def procesar(form):
             mejor = res
 
     html = open("index.html", encoding="utf-8").read().split("<form")[0]
-    html += "<p><button onclick='history.back()'>Volver a los datos</button></p>"
     html += "<div class='caja'><h2>Comparación de equipos</h2><div class='tabla'><table>"
     html += "<tr><th>Personas</th><th>Salario normal</th><th>Tiempo extra</th><th>Espera camiones</th><th>Almacén</th><th>Costo total</th></tr>"
     for res in resultados:
-        if res == mejor:
-            html += "<tr class='mejor'>"
-        else:
-            html += "<tr>"
-        html += f"<td>{res['personas']}</td>"
+        html += f"<tr><td>{res['personas']}</td>"
         html += f"<td>${res['normal']:.2f}</td>"
         html += f"<td>${res['extra']:.2f}</td>"
         html += f"<td>${res['costo_espera']:.2f}</td>"
@@ -207,8 +201,5 @@ class Servidor(BaseHTTPRequestHandler):
 
 os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
 servidor = HTTPServer(("127.0.0.1", 0), Servidor)
-direccion = "http://127.0.0.1:" + str(servidor.server_port)
-print("Simulación abierta en " + direccion)
-print("No cierres esta ventana mientras la usas")
-webbrowser.open(direccion)
+webbrowser.open("http://127.0.0.1:" + str(servidor.server_port))
 servidor.serve_forever()
