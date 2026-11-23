@@ -1,15 +1,20 @@
-import os
-import sys
 import random
-import webbrowser
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import parse_qsl
+import tkinter as tk
+from tkinter import scrolledtext
+
+
+def leer_aleatorios(texto):
+    numeros = []
+    for x in texto.split():
+        numeros.append(float(x))
+    return numeros
 
 
 def simular(datos):
     filas = []
     metas = 0
     quiebras = 0
+    usados = 0
 
     for corrida in range(1, datos["corridas"] + 1):
         dinero = datos["inicial"]
@@ -17,7 +22,13 @@ def simular(datos):
         while True:
             if apuesta > dinero:
                 apuesta = dinero
-            r = round(random.random(), 5)
+
+            if usados < len(datos["aleatorios"]):
+                r = datos["aleatorios"][usados]
+            else:
+                r = round(random.random(), 5)
+            usados = usados + 1
+
             gano = r <= datos["probabilidad"]
             if gano:
                 despues = dinero + apuesta
@@ -45,65 +56,77 @@ def simular(datos):
     return {"filas": filas, "metas": metas, "quiebras": quiebras, "corridas": datos["corridas"]}
 
 
-def procesar(form):
-    datos = {}
-    datos["inicial"] = float(form["inicial"])
-    datos["meta"] = float(form["meta"])
-    datos["apuesta"] = float(form["apuesta"])
-    datos["probabilidad"] = float(form["probabilidad"])
-    datos["corridas"] = int(form["corridas"])
+def boton_simular():
+    pantalla.delete("1.0", "end")
+    try:
+        datos = {}
+        datos["inicial"] = float(inicial.get())
+        datos["meta"] = float(meta.get())
+        datos["apuesta"] = float(apuesta.get())
+        datos["probabilidad"] = float(probabilidad.get())
+        datos["corridas"] = int(corridas.get())
+        datos["aleatorios"] = leer_aleatorios(aleatorios.get("1.0", "end"))
+    except ValueError:
+        pantalla.insert("end", "Revisa los datos: hay un valor que no es número.\n")
+        return
+    if datos["inicial"] <= 0 or datos["apuesta"] <= 0 or datos["meta"] <= datos["inicial"] or datos["corridas"] < 1:
+        pantalla.insert("end", "Revisa los datos: la meta debe ser mayor que la cantidad inicial y todo debe ser positivo.\n")
+        return
 
     res = simular(datos)
     prob = res["metas"] / res["corridas"]
 
-    html = open("index.html", encoding="utf-8").read().split("<form")[0]
-    html += "<div class='caja'><h2>Resultados</h2>"
-    html += f"<p class='optimo'>Probabilidad de llegar a la meta: {res['metas']} / {res['corridas']} = {prob:.2f}</p>"
-    html += f"<p class='nota'>Veces que se llegó a la meta: {res['metas']}<br>"
-    html += f"Veces que se llegó a la quiebra: {res['quiebras']}<br>"
-    html += f"Corridas realizadas: {res['corridas']}</p></div>"
+    pantalla.insert("end", "RESULTADOS\n")
+    pantalla.insert("end", "Probabilidad de llegar a la meta: " + str(res["metas"]) + " / " + str(res["corridas"]) + " = " + format(prob, ".2f") + "\n")
+    pantalla.insert("end", "Veces que se llegó a la meta: " + str(res["metas"]) + "\n")
+    pantalla.insert("end", "Veces que se llegó a la quiebra: " + str(res["quiebras"]) + "\n")
+    pantalla.insert("end", "Corridas realizadas: " + str(res["corridas"]) + "\n")
+    pantalla.insert("end", "Volados totales: " + str(len(res["filas"])) + "\n")
 
-    html += "<div class='caja'><h2>Tabla de simulación</h2><div class='tabla'><table>"
-    html += "<tr><th>Número de corrida</th><th>Cantidad antes del volado</th><th>Apuesta</th><th>Número aleatorio</th>"
-    html += "<th>¿Se ganó el volado?</th><th>Cantidad después del volado</th><th>¿Se llegó a la meta?</th></tr>"
+    pantalla.insert("end", "\nTABLA DE SIMULACIÓN\n")
+    pantalla.insert("end", "Corrida\tAntes\tApuesta\tR\tGanó\tDespués\tMeta\n")
     for f in res["filas"]:
-        clase = ""
-        meta = "No"
-        if f["estado"] == "meta":
-            clase = " class='meta'"
-            meta = "Sí (META)"
-        if f["estado"] == "quiebra":
-            clase = " class='quiebra'"
-            meta = "No (QUIEBRA)"
         gano = "No"
         if f["gano"]:
             gano = "Sí"
-        html += f"<tr{clase}><td>{f['corrida']}</td><td>${f['antes']:g}</td><td>${f['apuesta']:g}</td><td>{f['r']}</td>"
-        html += f"<td>{gano}</td><td>${f['despues']:g}</td><td>{meta}</td></tr>"
-    html += "</table></div></div>"
-
-    html += "</main></body></html>"
-    return html
-
-
-class Servidor(BaseHTTPRequestHandler):
-
-    def do_GET(self):
-        self.responder(open("index.html", encoding="utf-8").read())
-
-    def do_POST(self):
-        largo = int(self.headers["Content-Length"])
-        form = dict(parse_qsl(self.rfile.read(largo).decode("utf-8"), keep_blank_values=True))
-        self.responder(procesar(form))
-
-    def responder(self, html):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(html.encode("utf-8"))
+        llego = "No"
+        if f["estado"] == "meta":
+            llego = "Sí (META)"
+        if f["estado"] == "quiebra":
+            llego = "No (QUIEBRA)"
+        pantalla.insert("end", str(f["corrida"]) + "\t$" + format(f["antes"], "g") + "\t$" + format(f["apuesta"], "g") + "\t")
+        pantalla.insert("end", format(f["r"], ".5f") + "\t" + gano + "\t$" + format(f["despues"], "g") + "\t" + llego + "\n")
 
 
-os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-servidor = HTTPServer(("127.0.0.1", 0), Servidor)
-webbrowser.open("http://127.0.0.1:" + str(servidor.server_port))
-servidor.serve_forever()
+def campo(texto, valor, fila, columna):
+    tk.Label(ventana, text=texto).grid(row=fila, column=columna, sticky="w", padx=5, pady=2)
+    entrada = tk.Entry(ventana, width=10)
+    entrada.grid(row=fila, column=columna + 1, padx=5, pady=2)
+    entrada.insert(0, valor)
+    return entrada
+
+
+def cuadro(texto, valor, columna):
+    tk.Label(ventana, text=texto).grid(row=0, column=columna, padx=5)
+    caja = tk.Text(ventana, width=22, height=10)
+    caja.grid(row=1, column=columna, rowspan=14, padx=5, sticky="n")
+    caja.insert("1.0", valor)
+    return caja
+
+
+ventana = tk.Tk()
+ventana.title("Problema de volados")
+
+inicial = campo("Cantidad inicial", "50", 0, 0)
+meta = campo("Meta", "80", 1, 0)
+apuesta = campo("Apuesta inicial", "10", 2, 0)
+probabilidad = campo("Gana si aleatorio <=", "0.5", 3, 0)
+corridas = campo("Corridas completas", "4", 4, 0)
+
+aleatorios = cuadro("Aleatorios (vacío = al azar)", "", 2)
+
+tk.Button(ventana, text="Simular", width=20, command=boton_simular).grid(row=15, column=0, columnspan=3, pady=10)
+pantalla = scrolledtext.ScrolledText(ventana, height=25, font=("Consolas", 10))
+pantalla.grid(row=16, column=0, columnspan=3, padx=10, pady=5, sticky="we")
+
+ventana.mainloop()
