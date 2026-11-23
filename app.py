@@ -26,6 +26,13 @@ def leer_tabla(texto):
     return tabla
 
 
+def leer_numeros(texto):
+    numeros = []
+    for x in texto.split():
+        numeros.append(float(x))
+    return numeros
+
+
 def congruencial(semilla, a, c, m, cantidad):
     numeros = []
     x = semilla
@@ -41,6 +48,16 @@ def buscar(r, tabla):
         acumulada = round(acumulada + renglon[1], 4)
         if r <= acumulada:
             return renglon[0]
+
+
+def rangos(nombre, tabla):
+    texto = "\n" + nombre + "\n"
+    anterior = 0
+    for renglon in tabla:
+        acumulada = round(anterior + renglon[1], 4)
+        texto += f"Si R > {anterior} y ≤ {acumulada} entonces x = {renglon[0]}\n"
+        anterior = acumulada
+    return texto
 
 
 def simular(personas, tabla_servicio, datos):
@@ -133,9 +150,11 @@ def boton_simular():
     datos["inicial"] = leer_tabla(inicial.get("1.0", "end"))
     datos["llegadas"] = leer_tabla(llegadas.get("1.0", "end"))
     numeros = congruencial(int(semilla.get()), int(multiplicador.get()), int(incremento.get()), int(modulo.get()), 200)
-    datos["r_inicial"] = numeros[0]
-    datos["r_llegadas"] = numeros[1:100]
-    datos["r_servicio"] = numeros[100:]
+    r_llegadas = leer_numeros(aleatorios_llegadas.get("1.0", "end")) + numeros[:100]
+    r_servicio = leer_numeros(aleatorios_servicio.get("1.0", "end")) + numeros[100:]
+    datos["r_inicial"] = r_llegadas[0]
+    datos["r_llegadas"] = r_llegadas[1:]
+    datos["r_servicio"] = r_servicio
 
     resultados = []
     for equipo in equipos:
@@ -163,6 +182,12 @@ def boton_simular():
             salida += f"{f['r_servicio']}\t{f['servicio']}\t{a_hora(f['fin'])}\t{f['ocio']}\t{f['espera']}\t{f['cola']}\n"
             numero = numero + 1
 
+    salida += "\nTABLA DE RANGOS\n"
+    salida += rangos("Camiones al abrir", datos["inicial"])
+    salida += rangos("Tiempo entre llegadas", datos["llegadas"])
+    for equipo in equipos:
+        salida += rangos("Servicio con " + equipo[0].get() + " personas", leer_tabla(equipo[1].get("1.0", "end")))
+
     pantalla.delete("1.0", "end")
     pantalla.insert("1.0", salida)
 
@@ -175,11 +200,11 @@ def campo(texto, valor, fila, columna):
     return entrada
 
 
-def cuadro(texto, valor, columna):
-    tk.Label(ventana, text=texto).grid(row=0, column=columna, padx=5)
-    caja = tk.Text(ventana, width=10, height=10)
+def cuadro(texto, valor, fila, columna):
+    tk.Label(ventana, text=texto).grid(row=fila, column=columna, padx=5)
+    caja = tk.Text(ventana, width=10, height=10, wrap="word")
     caja.insert("1.0", valor)
-    caja.grid(row=1, column=columna, rowspan=14, padx=5, sticky="n")
+    caja.grid(row=fila + 1, column=columna, rowspan=7, padx=5, sticky="n")
     return caja
 
 
@@ -203,17 +228,19 @@ multiplicador = campo("Multiplicador (a)", "1021", 13, 0)
 incremento = campo("Incremento (c)", "7", 14, 0)
 modulo = campo("Módulo (m)", "100000", 15, 0)
 
-inicial = cuadro("Camiones al abrir", "0 .50\n1 .25\n2 .15\n3 .10", 2)
-llegadas = cuadro("Entre llegadas", "20 .02\n25 .08\n30 .12\n35 .25\n40 .20\n45 .15\n50 .10\n55 .05\n60 .03", 3)
-servicio1 = cuadro("Servicio equipo 1", "20 .05\n25 .10\n30 .20\n35 .25\n40 .12\n45 .10\n50 .08\n55 .06\n60 .04", 4)
-servicio2 = cuadro("Servicio equipo 2", "15 .05\n20 .15\n25 .20\n30 .20\n35 .15\n40 .12\n45 .08\n50 .04\n55 .01", 5)
-servicio3 = cuadro("Servicio equipo 3", "10 .10\n15 .18\n20 .22\n25 .18\n30 .10\n35 .08\n40 .06\n45 .05\n50 .03", 6)
-servicio4 = cuadro("Servicio equipo 4", "5 .12\n10 .15\n15 .26\n20 .15\n25 .12\n30 .08\n35 .06\n40 .04\n45 .02", 7)
+inicial = cuadro("Camiones al abrir", "0 .50\n1 .25\n2 .15\n3 .10", 0, 2)
+llegadas = cuadro("Entre llegadas", "20 .02\n25 .08\n30 .12\n35 .25\n40 .20\n45 .15\n50 .10\n55 .05\n60 .03", 0, 3)
+servicio1 = cuadro("Servicio equipo 1", "20 .05\n25 .10\n30 .20\n35 .25\n40 .12\n45 .10\n50 .08\n55 .06\n60 .04", 0, 4)
+servicio2 = cuadro("Servicio equipo 2", "15 .05\n20 .15\n25 .20\n30 .20\n35 .15\n40 .12\n45 .08\n50 .04\n55 .01", 0, 5)
+servicio3 = cuadro("Servicio equipo 3", "10 .10\n15 .18\n20 .22\n25 .18\n30 .10\n35 .08\n40 .06\n45 .05\n50 .03", 0, 6)
+servicio4 = cuadro("Servicio equipo 4", "5 .12\n10 .15\n15 .26\n20 .15\n25 .12\n30 .08\n35 .06\n40 .04\n45 .02", 0, 7)
+aleatorios_llegadas = cuadro("Aleatorios llegadas\n(vacío = congruencial)", "", 8, 2)
+aleatorios_servicio = cuadro("Aleatorios servicio\n(vacío = congruencial)", "", 8, 3)
 
 equipos = [[personas1, servicio1], [personas2, servicio2], [personas3, servicio3], [personas4, servicio4]]
 
 tk.Button(ventana, text="Simular", width=20, command=boton_simular).grid(row=16, column=0, columnspan=8, pady=8)
-pantalla = scrolledtext.ScrolledText(ventana, height=18, font=("Consolas", 10))
+pantalla = scrolledtext.ScrolledText(ventana, height=16, font=("Consolas", 10))
 pantalla.grid(row=17, column=0, columnspan=8, padx=5, pady=5, sticky="we")
 
 ventana.mainloop()
