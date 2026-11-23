@@ -28,7 +28,7 @@ def leer_tabla(texto):
 
 def leer_numeros(texto):
     numeros = []
-    for x in texto.split():
+    for x in texto.replace(",", " ").split():
         numeros.append(float(x))
     return numeros
 
@@ -134,6 +134,7 @@ def simular(personas, tabla_servicio, datos):
 
 
 def boton_simular():
+    pantalla.delete("1.0", "end")
     datos = {}
     datos["apertura"] = a_minutos(apertura.get())
     datos["limite"] = a_minutos(limite.get())
@@ -188,7 +189,6 @@ def boton_simular():
     for equipo in equipos:
         salida += rangos("Servicio con " + equipo[0].get() + " personas", leer_tabla(equipo[1].get("1.0", "end")))
 
-    pantalla.delete("1.0", "end")
     pantalla.insert("1.0", salida)
 
 
